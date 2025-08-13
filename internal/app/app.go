@@ -1,46 +1,55 @@
 package app
 
 import (
-	"FEMProject/internal/api"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/api"
+	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/store"
 )
 
-// Why we need this: Instead of using global variables, we bundle our app's components (like logger) into a single struct. This is a common Go pattern for organizing application state.
+// Application bundles together all core dependencies of the app.
+// This avoids using global variables and makes it easier to pass
+// dependencies (like logger, DB, handlers) around the codebase.
 type Application struct {
 	Logger         *log.Logger
 	WorkoutHandler *api.WorkoutHandler
+	DB             *sql.DB
 }
 
-// A logger is a tool that helps you track what's happening in your program by printing messages. Think of it like a diary for your application.
-// Instead of using fmt.Println() everywhere, we use a logger
-// example->
-// We use a logger:
-// app.Logger.Println("Server started")
-
-
-// This is like a constructor because it:
+// NewApplication sets up and returns a fully initialized Application instance.
+// Responsibilities:
+//  1. Connect to the PostgreSQL database.
+//  2. Create a logger for consistent logging.
+//  3. Initialize request handlers.
+//  4. Return the ready-to-use Application.
 func NewApplication() (*Application, error) {
-	// 1. Creates a new logger
+	// Connect to PostgreSQL
+	pgDB, err := store.Open()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a logger that writes to stdout with date + time format
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
-	//stores->
-
-	//handler->
+	// Initialize handlers
 	workoutHandler := api.NewWorkoutHandler()
 
-	// 2. Creates a new Application with that logger
+	// Bundle dependencies into Application
 	app := &Application{
 		Logger:         logger,
 		WorkoutHandler: workoutHandler,
+		DB:             pgDB,
 	}
 
-	// 3. Returns the ready-to-use Application
 	return app, nil
 }
 
+// HealthCheck is a simple route to verify that the server is running.
 func (a *Application) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Status is available")
 }

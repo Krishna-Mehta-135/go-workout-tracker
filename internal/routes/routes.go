@@ -1,8 +1,7 @@
 package routes
 
 import (
-	"FEMProject/internal/app"
-
+	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/app"
 	"github.com/go-chi/chi/v5"
 )
 
