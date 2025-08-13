@@ -1,10 +1,13 @@
 services:
     app:
-        build: .
-        container_name: "workout"
-        restart: unless-stopped
-        env_file: .env
+        # this is your Go app service
+        image: golang:1.24-alpine # official Go image
+        container_name: workout # name of the container
+        restart: unless-stopped # restart policy if container stops/crashes
+        env_file: .env # loads environment variables, like DATABASE_URL
         ports:
-            - "${PORT}:${PORT}"
+            - "${PORT}:${PORT}" # expose your app's port from container to host
         volumes:
-            - .:/usr/src/app
+            - .:/usr/src/app # mount current folder into the container
+        working_dir: /usr/src/app # inside container, this is where commands run
+        command: go run main.go  # what to run inside the container
