@@ -1,39 +1,42 @@
 package main
 
 import (
-	"FEMProject/internal/app"
-	"FEMProject/internal/routes"
 	"flag"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/app"
+	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/routes"
 )
 
 func main() {
+	// CLI flag for port: go run main.go -port=9090
 	var port int
-	flag.IntVar(&port, "port", 8080, "go backend server port")  //made dynamic port using flags
+	flag.IntVar(&port, "port", 8080, "Go backend server port")
 	flag.Parse()
 
-	app, err := app.NewApplication() //Creates your Application "toolbox" with the logger
+	// Initialize application
+	app, err := app.NewApplication()
 	if err != nil {
 		panic(err)
 	}
-	app.Logger.Printf("We are running on port %d\n", port)
+	
+	//Closes Db at the end
+	defer app.DB.Close()
 
-	r := routes.SetupRoutes(app)
+	app.Logger.Printf("Server starting on port %d\n", port)
 
-	//http server
+	// Configure and start HTTP server
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
-		Handler:      r,
+		Handler:      routes.SetupRoutes(app),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 	}
 
-	//we assign the server to error because the func serve and listen only returns error, else it keeps running
-	err = server.ListenAndServe()
-	if err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		app.Logger.Fatal(err)
 	}
 }
