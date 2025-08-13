@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/api"
+	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/migrations"
 	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/store"
 )
 
@@ -31,6 +32,11 @@ func NewApplication() (*Application, error) {
 	pgDB, err := store.Open()
 	if err != nil {
 		return nil, err
+	}
+
+	err = store.MigrateFS(pgDB, migrations.FS, ".")
+	if err != nil {
+		panic(err)
 	}
 
 	// Create a logger that writes to stdout with date + time format

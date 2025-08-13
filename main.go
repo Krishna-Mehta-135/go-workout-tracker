@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/app"
@@ -11,23 +13,30 @@ import (
 )
 
 func main() {
-	// CLI flag for port: go run main.go -port=9090
-	var port int
-	flag.IntVar(&port, "port", 8080, "Go backend server port")
+	// Default port
+	port := 8080
+
+	// CLI flag to override port
+	flag.IntVar(&port, "port", port, "Go backend server port")
 	flag.Parse()
 
-	// Initialize application
+	// Override with environment variable if present
+	if portEnv := os.Getenv("PORT"); portEnv != "" {
+		if p, err := strconv.Atoi(portEnv); err == nil {
+			port = p
+		}
+	}
+
+	// Initialize application (DB, logger, handlers)
 	app, err := app.NewApplication()
 	if err != nil {
 		panic(err)
 	}
-	
-	//Closes Db at the end
 	defer app.DB.Close()
 
 	app.Logger.Printf("Server starting on port %d\n", port)
 
-	// Configure and start HTTP server
+	// Configure HTTP server
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
 		Handler:      routes.SetupRoutes(app),
@@ -36,6 +45,7 @@ func main() {
 		WriteTimeout: 30 * time.Second,
 	}
 
+	// Start server
 	if err := server.ListenAndServe(); err != nil {
 		app.Logger.Fatal(err)
 	}
