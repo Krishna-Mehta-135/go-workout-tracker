@@ -1,0 +1,21 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Output folders
+bin/
+build/
+
+# Go modules cache
+vendor/
+pkg/
+
+# Logs
+*.log
+
+# Secrets
+.env
