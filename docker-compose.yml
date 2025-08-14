@@ -10,4 +10,17 @@ services:
         volumes:
             - .:/usr/src/app # mount current folder into the container
         working_dir: /usr/src/app # inside container, this is where commands run
-        command: go run main.go  # what to run inside the container
+        command: go run main.go # what to run inside the container
+
+    test_db:
+        container_name: "workoutDB_test"
+        image: postgres:12.4-alpine
+        volumes:
+            - "./database/postgres-test-data:/var/lib/postgresql/data:rw"
+        ports:
+            - "5432:5433"
+        environment:
+            POSTGRES_DB: "postgres"
+            POSTGRES_USER: "postgres"
+            POSTGRES_PASSWORD: "postgres"
+        restart: unless-stopped
