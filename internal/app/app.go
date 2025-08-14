@@ -42,8 +42,11 @@ func NewApplication() (*Application, error) {
 	// Create a logger that writes to stdout with date + time format
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
+	//Initialize stores
+	workoutStore := store.NewPostgresWorkoutStore(pgDB)
+
 	// Initialize handlers
-	workoutHandler := api.NewWorkoutHandler()
+	workoutHandler := api.NewWorkoutHandler(workoutStore)
 
 	// Bundle dependencies into Application
 	app := &Application{
