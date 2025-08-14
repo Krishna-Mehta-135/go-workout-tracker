@@ -39,55 +39,112 @@ func NewPostgresWorkoutStore(db *sql.DB) *PostgresWorkoutStore {
 type WorkoutStore interface {
 	CreateWorkout(*Workout) (*Workout, error)
 	GetWorkoutById(id int64) (*Workout, error)
+	UpdateWorkout(*Workout) error
 }
 
-// CreateWorkout inserts a Workout and its associated WorkoutEntries into the database.
-// - Uses a transaction to ensure all-or-nothing behavior.
-// - Uses $1, $2... placeholders to prevent SQL injection.
-// - Populates the IDs of the workout and its entries after insertion.
-// Returns a pointer to the inserted Workout with all IDs populated, or an error if any occurs.
+
+// CreateWorkout inserts a new workout along with its entries into the database.
 func (pg *PostgresWorkoutStore) CreateWorkout(workout *Workout) (*Workout, error) {
+	// Start a new transaction. This ensures that either both the workout and all its entries are saved,
+	// or none of them are saved if an error occurs.
 	tx, err := pg.db.Begin()
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
+	defer tx.Rollback() // If the function exits before tx.Commit(), the transaction will roll back.
 
-	//The doller sign is used to prevent sql injection, we inject this query into the queryrow and these then prevents them
+	// Insert the workout into the 'workouts' table.
+	// $1, $2... are placeholders to safely inject parameters and prevent SQL injection.
 	query := `
 		INSERT INTO workouts (user_id, title, description, duration_minutes, calories_burned)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id 
-		`
-
+	`
+	// Execute the query and scan the generated ID back into workout.ID
 	err = tx.QueryRow(query, workout.UserID, workout.Title, workout.Description, workout.DurationMinutes, workout.CaloriesBurned).Scan(&workout.ID)
-	//We scan to get the id
 	if err != nil {
 		return nil, err
 	}
 
-	//We also need to insert the entries
+	// Insert each WorkoutEntry into the 'workout_entries' table.
 	for _, entry := range workout.Entries {
-		query := `
+		entryQuery := `
 			INSERT INTO workout_entries (workout_id, exercise_name, sets, reps, duration_seconds, weight, notes, order_index)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			RETURNING id
-    			`
-		err = tx.QueryRow(query, workout.ID, entry.ExerciseName, entry.Sets, entry.Reps, entry.DurationSeconds, entry.Weight, entry.Notes, entry.OrderIndex).Scan(&entry.ID)
+    	`
+		// Scan the generated entry ID into entry.ID
+		err = tx.QueryRow(entryQuery, workout.ID, entry.ExerciseName, entry.Sets, entry.Reps, entry.DurationSeconds, entry.Weight, entry.Notes, entry.OrderIndex).Scan(&entry.ID)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	// Commit the transaction. If this succeeds, all inserts are permanently saved.
 	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
 
+	// Return the workout struct including its ID and entries with IDs populated.
 	return workout, nil
 }
 
-func (pg *PostgresWorkoutStore) GetWorkoutById(id int64) (*Workout, error){
+
+// GetWorkoutById retrieves a workout and its associated entries from the database by workout ID.
+func (pg *PostgresWorkoutStore) GetWorkoutById(id int64) (*Workout, error) {
 	workout := &Workout{}
+
+	// Query the workouts table for the basic workout information
+	query := `
+	SELECT id, title, description, duration_minutes, calories_burned
+	FROM workouts
+	WHERE id = $1
+	`
+	err := pg.db.QueryRow(query, id).Scan(&workout.ID, &workout.Title, &workout.Description, &workout.DurationMinutes, &workout.CaloriesBurned)
+
+	if err == sql.ErrNoRows {
+		// Return nil if no workout is found
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// Query all associated entries for the workout
+	entryQuery := `
+	SELECT id, exercise_name, sets, reps, duration_seconds, weight, notes, order_index
+	FROM workout_entries
+	WHERE workout_id = $1
+	ORDER BY order_index
+	`
+
+	rows, err := pg.db.Query(entryQuery, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close() // Close the rows when done
+
+	// Loop through each row and append to workout.Entries
+	for rows.Next() {
+		var entry WorkoutEntry
+		err = rows.Scan(
+			&entry.ID,
+			&entry.ExerciseName,
+			&entry.Sets,
+			&entry.Reps,
+			&entry.DurationSeconds,
+			&entry.Weight,
+			&entry.Notes,
+			&entry.OrderIndex,
+		)
+		if err != nil {
+			return nil, err
+		}
+		workout.Entries = append(workout.Entries, entry)
+	}
+
+	// Return the complete workout struct with its entries
 	return workout, nil
 }
+
