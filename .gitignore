@@ -19,3 +19,6 @@ pkg/
 
 # Secrets
 .env
+
+# Postgres test DB data
+database/postgres-test-data/
