@@ -2,11 +2,8 @@ package app
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
-	"net/http"
 	"os"
-
 	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/api"
 	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/migrations"
 	"github.com/Krishna-Mehta-135/go-workout-tracker/internal/store"
@@ -19,6 +16,7 @@ type Application struct {
 	Logger         *log.Logger
 	WorkoutHandler *api.WorkoutHandler
 	DB             *sql.DB
+	UserHandler    *api.UserHandler
 }
 
 // NewApplication sets up and returns a fully initialized Application instance.
@@ -44,21 +42,19 @@ func NewApplication() (*Application, error) {
 
 	//Initialize stores
 	workoutStore := store.NewPostgresWorkoutStore(pgDB)
+	userStore := store.NewPostgresUserStore(pgDB)
 
 	// Initialize handlers
 	workoutHandler := api.NewWorkoutHandler(workoutStore, logger)
+	userHandler := api.NewUserHandler(userStore, logger)
 
 	// Bundle dependencies into Application
 	app := &Application{
 		Logger:         logger,
+		UserHandler:    userHandler,
 		WorkoutHandler: workoutHandler,
 		DB:             pgDB,
 	}
 
 	return app, nil
-}
-
-// HealthCheck is a simple route to verify that the server is running.
-func (a *Application) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Status is available")
 }

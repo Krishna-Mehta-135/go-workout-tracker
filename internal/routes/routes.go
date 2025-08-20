@@ -10,12 +10,13 @@ func SetupRoutes(app *app.Application) *chi.Mux{
 	r := chi.NewRouter()
 
 	//since Health check func was a method of application struct, we can use it here without importing
-	r.Get("/health", app.HealthCheck)
 	r.Get("/workouts/{id}", app.WorkoutHandler.HandleWorkoutByID)
 
 	r.Post("/workouts", app.WorkoutHandler.HandleCreateWorkout)
 	r.Put("/workouts/{id}", app.WorkoutHandler.HandleUpdateWorkoutByID)
+	r.Delete("/workouts/{id}", app.WorkoutHandler.HandleDeleteWorkout)
 
-	r.Delete("//workouts/{id}", app.WorkoutHandler.HandleDeleteWorkout)
+	r.Post("/users", app.UserHandler.HandleRegisterUser)
+	
 	return r
 }
